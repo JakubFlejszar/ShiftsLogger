@@ -1,0 +1,276 @@
+﻿using Spectre.Console;
+using System.Globalization;
+
+namespace ShiftsLoggerApiClient
+{
+    internal class Menu
+    {
+        private readonly ApiConnection apiConnection = new ApiConnection();
+        private readonly CultureInfo culture = CultureInfo.InvariantCulture;
+
+        public async Task MainMenu()
+        {
+            bool isRunning = true;
+            while (isRunning)
+            {
+                string menuChoice = MenuSelection();
+                switch (menuChoice)
+                {
+                    case "View Shifts":
+                        Console.Clear();
+                        await ViewShifts();
+                        break;
+
+                    case "Create Shift":
+                        Console.Clear();
+
+                        await CreateShift();
+                        break;
+
+                    case "Update Shift":
+                        Console.Clear();
+
+                        await UpdateShift();
+                        break;
+
+                    case "Delete Shift":
+                        Console.Clear();
+
+                        await DeleteShift();
+                        break;
+
+                    case "Exit Program":
+                        Console.Clear();
+
+                        isRunning = false;
+                        Environment.Exit(0);
+                        break;
+                }
+            }
+        }
+
+        public string MenuSelection()
+        {
+            var menu = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                .Title("What you want to do?")
+                .AddChoices("View Shifts", "Create Shift", "Update Shift", "Delete Shift", "Exit Program"));
+
+            return menu;
+        }
+
+        public async Task ViewShifts()
+        {
+            var shifts = await apiConnection.GetShifts();
+            if (shifts == null)
+            {
+                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                return;
+            }
+
+            var viewShifts = new Table()
+                .RoundedBorder()
+                .ShowRowSeparators()
+                .AddColumns("ShiftId", "WorkerId", "Start date", "End date", "Duration");
+
+            foreach (ShiftsLog shift in shifts)
+            {
+                viewShifts.AddRow(
+                    Convert.ToString(shift.Id),
+                    Convert.ToString(shift.WorkerId),
+                    shift.StartDate.ToString("d-M-yyyy"),
+                    shift.EndDate.ToString("d-M-yyyy"),
+                    ($"{shift.Duration.Days} days" +
+                    $" {shift.Duration.Hours} hours" +
+                    $" {shift.Duration.Minutes} minutes"));
+            }
+
+            AnsiConsole.Write(viewShifts);
+        }
+
+        public async Task CreateShift()
+        {
+            var newShift = new ShiftDto();
+            int workerId = AnsiConsole.Ask<int>("Please type new [LightGoldenrod2_2]worker id[/]");
+            while (workerId < 1)
+            {
+                workerId = AnsiConsole.Ask<int>("Please type new [LightGoldenrod2_2]worker id[/]");
+            }
+            bool keepValidating = true;
+            DateTime endDate = default;
+            DateTime startDate = default;
+            bool startSuccess = false;
+
+            while (keepValidating)
+            {
+                var startDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]start date d-M-yyyy[/] or \"t\" for today");
+                if (startDateString == "t")
+                {
+                    startDate = DateTime.Today;
+                    startSuccess = true;
+                }
+                else
+                {
+                    startSuccess = DateTime.TryParseExact(startDateString, "d-M-yyyy", culture, DateTimeStyles.None, out startDate);
+                }
+                while (!startSuccess)
+                {
+                    startDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]start date d-M-yyyy[/] or [LightGoldenrod2_2]\"t\"[/] for today");
+                    startSuccess = DateTime.TryParseExact(startDateString, "d-M-yyyy", culture, DateTimeStyles.None, out startDate);
+                }
+
+                var endDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]end date d-M-yyyy[/]");
+                bool endSuccess = DateTime.TryParseExact(endDateString, "d-M-yyyy", culture, DateTimeStyles.None, out endDate);
+                while (!endSuccess)
+                {
+                    endDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]end date d-M-yyyy[/]");
+                    endSuccess = DateTime.TryParseExact(endDateString, "d-M-yyyy", culture, DateTimeStyles.None, out endDate);
+                }
+                if (endDate <= startDate)
+                {
+                    keepValidating = true;
+                }
+                else
+                {
+                    keepValidating = false;
+                }
+            }
+
+            newShift.WorkerId = workerId;
+            newShift.StartDate = startDate;
+            newShift.EndDate = endDate;
+            var result = await apiConnection.CreateShift(newShift);
+            if (result == null)
+            {
+                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                return;
+            }
+            AnsiConsole.MarkupLine("Shift [green]successfully[/] created");
+        }
+
+        public async Task UpdateShift()
+        {
+            var shifts = await apiConnection.GetShifts();
+
+            var newShift = new ShiftDto();
+            var menu = new SelectionPrompt<ShiftsLog>()
+                .Title("Choose shift to update");
+            if (shifts == null)
+            {
+                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to update");
+                return;
+            }
+            if (!shifts.Any())
+            {
+                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to update");
+                return;
+            }
+            foreach (ShiftsLog shift in shifts)
+            {
+                menu.AddChoice(shift);
+            }
+
+            menu.Converter = shift =>
+            $"{shift.Id,-5} Id | " +
+            $"{shift.WorkerId,-5} WorkerId | " +
+            $"{shift.StartDate,-5:dd-MM-yyyy}-Start | " +
+            $"{shift.EndDate,-5:dd-MM-yyyy}-End | " +
+            $"{shift.Duration.Days,-5} Days | ";
+            var selectedShift = AnsiConsole.Prompt(menu);
+
+            DateTime startDate = default;
+            DateTime endDate = default;
+            int newWorkerId = AnsiConsole.Ask<int>("Please type new [LightGoldenrod2_2]worker id[/]");
+            while (newWorkerId < 1)
+            {
+                newWorkerId = AnsiConsole.Ask<int>("Please type new [LightGoldenrod2_2]worker id[/]");
+            }
+            bool keepValidating = true;
+            bool newStartDate = false;
+            while (keepValidating)
+            {
+                string newStartDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]start date d-m-yyyy[/] or \"t\" for today");
+                if (newStartDateString == "t")
+                {
+                    startDate = DateTime.Today;
+                    newStartDate = true;
+                }
+                else
+                {
+                    newStartDate = DateTime.TryParseExact(newStartDateString, "d-M-yyyy", culture, DateTimeStyles.None, out startDate);
+                }
+                while (!newStartDate)
+                {
+                    newStartDateString = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]start date d-m-yyyy[/] or \"t\" for today");
+                    newStartDate = DateTime.TryParseExact(newStartDateString, "d-M-yyyy", culture, DateTimeStyles.None, out startDate);
+                }
+
+                string newEndDatestring = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]end date[/] d-m-yyyy");
+                bool newEndDate = DateTime.TryParseExact(newEndDatestring, "d-M-yyyy", culture, DateTimeStyles.None, out endDate);
+                while (!newEndDate)
+                {
+                    newEndDatestring = AnsiConsole.Ask<string>("Please type new [LightGoldenrod2_2]end date[/] d-m-yyyy");
+                    newEndDate = DateTime.TryParseExact(newEndDatestring, "d-M-yyyy", culture, DateTimeStyles.None, out endDate);
+                }
+                if (endDate <= startDate)
+                {
+                    keepValidating = true;
+                }
+                else
+                {
+                    keepValidating = false;
+                }
+            }
+
+            newShift.WorkerId = newWorkerId;
+            newShift.StartDate = startDate;
+            newShift.EndDate = endDate;
+            var result = await apiConnection.UpdateShift(selectedShift.Id, newShift);
+            if (result == null)
+            {
+                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                return;
+            }
+            AnsiConsole.MarkupLine("Shift [green]successfully[/] updated");
+        }
+
+        public async Task DeleteShift()
+        {
+            var shifts = await apiConnection.GetShifts();
+
+            var menu = new SelectionPrompt<ShiftsLog>()
+                .Title("Choose shift to delete");
+            if (shifts == null)
+            {
+                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to delete");
+                return;
+            }
+            if (!shifts.Any())
+            {
+                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to delete");
+                return;
+            }
+            foreach (ShiftsLog shift in shifts)
+            {
+                menu.AddChoice(shift);
+            }
+
+            menu.Converter = shift =>
+                $"{shift.Id,-5} Id | " +
+                $"{shift.WorkerId,-5} WorkerId | " +
+                $"{shift.StartDate,-5:dd-MM-yyyy}-Start | " +
+                $"{shift.EndDate,-5:dd-MM-yyyy}-End | " +
+                $"{shift.Duration.Days,-5} Days | ";
+            var selectedShift = AnsiConsole.Prompt(menu);
+            int id = selectedShift.Id;
+
+            var result = await apiConnection.DeleteShift(id);
+            if (!result)
+            {
+                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                return;
+            }
+            AnsiConsole.MarkupLine("Shift [green]successfully[/] deleted");
+        }
+    }
+}
