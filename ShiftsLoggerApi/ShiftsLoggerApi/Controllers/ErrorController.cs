@@ -1,25 +1,25 @@
-﻿using Microsoft.AspNetCore.Diagnostics; // Udostępnia IExceptionHandlerPathFeature do odczytania obsługiwanego wyjątku.
-using Microsoft.AspNetCore.Mvc; // Udostępnia klasy potrzebne do tworzenia kontrolera i odpowiedzi HTTP.
+﻿using Microsoft.AspNetCore.Diagnostics; 
+using Microsoft.AspNetCore.Mvc;
 
 namespace ShiftsLoggerApi.Controllers
 {
-    [ApiController] // Oznacza klasę jako kontroler Web API.
-    [Route("/error")] // Ustawia adres tego kontrolera na /error.
-    public class ErrorController : ControllerBase // Tworzy kontroler odpowiedzialny za obsługę błędów.
+    [ApiController] 
+    [Route("/error")] 
+    public class ErrorController : ControllerBase
     {
-        private readonly ILogger<ErrorController> logger; // Pole przechowujące logger dla tego kontrolera.
+        private readonly ILogger<ErrorController> logger; 
 
-        public ErrorController(ILogger<ErrorController> loggerAssign) // Konstruktor, przez który DI przekazuje logger.
+        public ErrorController(ILogger<ErrorController> loggerAssign) 
         {
-            logger = loggerAssign; // Przypisuje otrzymany logger do pola klasy.
+            logger = loggerAssign;
         }
 
-        [ApiExplorerSettings(IgnoreApi = true)] // Ukrywa ten endpoint przed Swaggerem.
-        public IActionResult Error(IExceptionHandlerPathFeature exception) // Odbiera informacje o wyjątku przechwyconym przez ASP.NET Core.
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public IActionResult Error(IExceptionHandlerPathFeature exception) 
         {
-            logger.LogError(exception.Error, "Unhandled exception occurred"); // Zapisuje wyjątek wraz ze szczegółami w logach aplikacji.
+            logger.LogError(exception.Error, "Unhandled exception occurred");
 
-            return StatusCode(500, "Something went wrong"); // Zwraca klientowi HTTP 500 bez ujawniania szczegółów wyjątku.
+            return StatusCode(500, "Something went wrong");
         }
     }
 }
