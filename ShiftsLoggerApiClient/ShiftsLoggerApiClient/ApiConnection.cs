@@ -12,24 +12,45 @@ namespace ShiftsLoggerApiClient
             PropertyNameCaseInsensitive = true
         };
 
-        public async Task<IEnumerable<ShiftsLog>> GetShifts()
+        public async Task<ApiResult> GetShifts()
         {
             try
             {
                 HttpResponseMessage response = await client.GetAsync("https://localhost:7216/Shifts");
-                response.EnsureSuccessStatusCode();
-                string result = await response.Content.ReadAsStringAsync();
-                var shifts = JsonSerializer.Deserialize<IEnumerable<ShiftsLog>>(result, options);
-                return shifts;
+                if (response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+                    var shifts = JsonSerializer.Deserialize<IEnumerable<ShiftsLog>>(result, options);
+                    return new ApiResult
+                    {
+                        Shifts = shifts,
+                        Success = true
+                    };
+                }
+                else
+                {
+                    var status = response.StatusCode;
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine(status);
+                    Console.WriteLine(error);
+                    return new ApiResult
+                    {
+                        Status = status,
+                        Success = false
+                    };
+                }
             }
             catch (HttpRequestException error)
             {
                 Console.WriteLine(error);
-                return null;
+                return new ApiResult
+                {
+                    Success = false
+                };
             }
         }
 
-        public async Task<ShiftsLog> CreateShift(ShiftDto newShift)
+        public async Task<ApiResult> CreateShift(ShiftDto newShift)
         {
             try
             {
@@ -39,19 +60,37 @@ namespace ShiftsLoggerApiClient
                     Encoding.UTF8,
                     "application/json");
                 HttpResponseMessage response = await client.PostAsync("https://localhost:7216/Shifts", content);
-                response.EnsureSuccessStatusCode();
-                string result = await response.Content.ReadAsStringAsync();
-                var finalResult = JsonSerializer.Deserialize<ShiftsLog>(result, options);
-                return finalResult;
+                if (response.IsSuccessStatusCode)
+                {
+                    return new ApiResult
+                    {
+                        Success = true
+                    };
+                }
+                else
+                {
+                    var status = response.StatusCode;
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine(status);
+                    Console.WriteLine(error);
+                    return new ApiResult
+                    {
+                        Status = status,
+                        Success = false
+                    };
+                }
             }
             catch (HttpRequestException error)
             {
                 Console.WriteLine(error);
-                return null;
+                return new ApiResult
+                {
+                    Success = false
+                };
             }
         }
 
-        public async Task<ShiftsLog> UpdateShift(int id, ShiftDto newShift)
+        public async Task<ApiResult> UpdateShift(int id, ShiftDto newShift)
         {
             try
             {
@@ -61,30 +100,68 @@ namespace ShiftsLoggerApiClient
                     Encoding.UTF8,
                     "application/json");
                 HttpResponseMessage response = await client.PutAsync($"https://localhost:7216/Shifts/{id}", content);
-                response.EnsureSuccessStatusCode();
-                string result = await response.Content.ReadAsStringAsync();
-                var finalResult = JsonSerializer.Deserialize<ShiftsLog>(result, options);
-                return finalResult;
+                if (response.IsSuccessStatusCode)
+                {
+                    return new ApiResult
+                    {
+                        Success = true
+                    };
+                }
+                else
+                {
+                    var status = response.StatusCode;
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine(status);
+                    Console.WriteLine(error);
+                    return new ApiResult
+                    {
+                        Status = status,
+                        Success = false
+                    };
+                }
             }
             catch (HttpRequestException error)
             {
                 Console.WriteLine(error);
-                return null;
+                return new ApiResult
+                {
+                    Success = false
+                };
             }
         }
 
-        public async Task<bool> DeleteShift(int id)
+        public async Task<ApiResult> DeleteShift(int id)
         {
             try
             {
                 HttpResponseMessage response = await client.DeleteAsync($"https://localhost:7216/Shifts/{id}");
-                response.EnsureSuccessStatusCode();
-                return true;
+                if (response.IsSuccessStatusCode)
+                {
+                    return new ApiResult
+                    {
+                        Success = true
+                    };
+                }
+                else
+                {
+                    var status = response.StatusCode;
+                    Console.WriteLine(status);
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine(error);
+                    return new ApiResult
+                    {
+                        Status = status,
+                        Success = false
+                    };
+                }
             }
             catch (HttpRequestException error)
             {
                 Console.WriteLine(error);
-                return false;
+                return new ApiResult
+                {
+                    Success = false
+                };
             }
         }
     }

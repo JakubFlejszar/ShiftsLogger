@@ -62,9 +62,19 @@ namespace ShiftsLoggerApiClient
         public async Task ViewShifts()
         {
             var shifts = await apiConnection.GetShifts();
-            if (shifts == null)
+            if (shifts.Success == false && shifts.Status != null)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                AnsiConsole.MarkupLine($"[red]API returned error:[/] {shifts.Status}");
+                return;
+            }
+            if (shifts.Success == false && shifts.Status == null)
+            {
+                AnsiConsole.MarkupLine($"[red]API doesn't respond:[/]");
+                return;
+            }
+            if (!shifts.Shifts.Any())
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/]Shifts list is empty");
                 return;
             }
 
@@ -73,7 +83,7 @@ namespace ShiftsLoggerApiClient
                 .ShowRowSeparators()
                 .AddColumns("ShiftId", "WorkerId", "Start date", "End date", "Duration");
 
-            foreach (ShiftsLog shift in shifts)
+            foreach (ShiftsLog shift in shifts.Shifts)
             {
                 viewShifts.AddRow(
                     Convert.ToString(shift.Id),
@@ -140,9 +150,14 @@ namespace ShiftsLoggerApiClient
             newShift.StartDate = startDate;
             newShift.EndDate = endDate;
             var result = await apiConnection.CreateShift(newShift);
-            if (result == null)
+            if (result.Success == false && result.Status == null)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                AnsiConsole.MarkupLine("[red]Error: API doesn't respond:[/");
+                return;
+            }
+            if (result.Success == false && result.Status != null)
+            {
+                AnsiConsole.MarkupLine($"[red]API returned error:[/]{result.Status}");
                 return;
             }
             AnsiConsole.MarkupLine("Shift [green]successfully[/] created");
@@ -151,21 +166,26 @@ namespace ShiftsLoggerApiClient
         public async Task UpdateShift()
         {
             var shifts = await apiConnection.GetShifts();
+            if (shifts.Success == false && shifts.Status != null)
+            {
+                AnsiConsole.MarkupLine($"[red]API returned error:[/] {shifts.Status}");
+                return;
+            }
+            if (shifts.Success == false && shifts.Status == null)
+            {
+                AnsiConsole.MarkupLine($"[red]API doesn't respond:[/]");
+                return;
+            }
+            if (!shifts.Shifts.Any())
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/]Shifts list is empty");
+                return;
+            }
 
             var newShift = new ShiftDto();
             var menu = new SelectionPrompt<ShiftsLog>()
                 .Title("Choose shift to update");
-            if (shifts == null)
-            {
-                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to update");
-                return;
-            }
-            if (!shifts.Any())
-            {
-                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to update");
-                return;
-            }
-            foreach (ShiftsLog shift in shifts)
+            foreach (ShiftsLog shift in shifts.Shifts)
             {
                 menu.AddChoice(shift);
             }
@@ -226,9 +246,14 @@ namespace ShiftsLoggerApiClient
             newShift.StartDate = startDate;
             newShift.EndDate = endDate;
             var result = await apiConnection.UpdateShift(selectedShift.Id, newShift);
-            if (result == null)
+            if (result.Success == false && result.Status == null)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                AnsiConsole.MarkupLine("[red]Error: API doesn't respond:[/");
+                return;
+            }
+            if (result.Success == false && result.Status != null)
+            {
+                AnsiConsole.MarkupLine($"[red]API returned error:[/]{result.Status}");
                 return;
             }
             AnsiConsole.MarkupLine("Shift [green]successfully[/] updated");
@@ -238,19 +263,24 @@ namespace ShiftsLoggerApiClient
         {
             var shifts = await apiConnection.GetShifts();
 
+            if (shifts.Success == false && shifts.Status != null)
+            {
+                AnsiConsole.MarkupLine($"[red]API returned error:[/] {shifts.Status}");
+                return;
+            }
+            if (shifts.Success == false && shifts.Status == null)
+            {
+                AnsiConsole.MarkupLine($"[red]API doesn't respond:[/]");
+                return;
+            }
+            if (!shifts.Shifts.Any())
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/]Shifts list is empty");
+                return;
+            }
             var menu = new SelectionPrompt<ShiftsLog>()
                 .Title("Choose shift to delete");
-            if (shifts == null)
-            {
-                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to delete");
-                return;
-            }
-            if (!shifts.Any())
-            {
-                AnsiConsole.MarkupLine("[DarkOrange]Warning:[/] Currently you don't have any shifts to delete");
-                return;
-            }
-            foreach (ShiftsLog shift in shifts)
+            foreach (ShiftsLog shift in shifts.Shifts)
             {
                 menu.AddChoice(shift);
             }
@@ -265,9 +295,14 @@ namespace ShiftsLoggerApiClient
             int id = selectedShift.Id;
 
             var result = await apiConnection.DeleteShift(id);
-            if (!result)
+            if (result.Success == false && result.Status == null)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Couldn't connect to api");
+                AnsiConsole.MarkupLine("[red]Error: API doesn't respond:[/");
+                return;
+            }
+            if (result.Success == false && result.Status != null)
+            {
+                AnsiConsole.MarkupLine($"[red]API returned error:[/]{result.Status}");
                 return;
             }
             AnsiConsole.MarkupLine("Shift [green]successfully[/] deleted");
